@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Savour TO — My Food Journal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#F7F4F1;color:#1A1714;-webkit-font-smoothing:antialiased}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:#F7F4F1}::-webkit-scrollbar-thumb{background:#C2BAB6;border-radius:3px}
+.savour-popup .leaflet-popup-content-wrapper{border-radius:12px!important;box-shadow:0 8px 32px rgba(26,23,20,0.18)!important;padding:0!important;border:none!important}
+.savour-popup .leaflet-popup-content{margin:12px!important;font-family:'DM Sans',sans-serif!important}
+.savour-popup .leaflet-popup-tip{background:white!important}
+.leaflet-control-zoom{border:none!important;box-shadow:0 2px 8px rgba(26,23,20,0.12)!important}
+.leaflet-control-zoom a{border-radius:6px!important;color:#1A1714!important;font-weight:500!important}
+.leaflet-control-attribution{font-family:'DM Sans',sans-serif!important;font-size:10px!important;background:rgba(255,255,255,0.85)!important}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+</style>
+</head>
+<body><div id="root"></div>
+<script type="text/babel">
+
+const C={primary:'#C4622D',primaryDark:'#9E4A1E',primaryLight:'#F2E0D5',green:'#2E5E3B',greenLight:'#D7EBE0',n900:'#1A1714',n700:'#4A4340',n600:'#6B625E',n400:'#9C9390',n200:'#EDE8E4',n100:'#F7F4F1',white:'#FFFFFF',star:'#F5C518'};
+
+// ── Genres ─────────────────────────────────────────────────
+const GENRES=[
+  {id:'japanese',label:'Japanese',color:'#C4622D',bg:'#F2E0D5',emoji:'🍜'},
+  {id:'cafe',label:'Café',color:'#2E5E3B',bg:'#D7EBE0',emoji:'☕'},
+  {id:'mediterranean',label:'Mediterranean',color:'#E8A838',bg:'#FEF3C7',emoji:'🫒'},
+  {id:'french',label:'French',color:'#6B625E',bg:'#EDE8E4',emoji:'🥐'},
+  {id:'mexican',label:'Mexican',color:'#9E4A1E',bg:'#F2E0D5',emoji:'🌮'},
+  {id:'thai',label:'Thai',color:'#4A8B5E',bg:'#D7EBE0',emoji:'🍛'},
+  {id:'italian',label:'Italian',color:'#7A3410',bg:'#FAF2EE',emoji:'🍝'},
+  {id:'brunch',label:'Brunch',color:'#C4622D',bg:'#FEF3C7',emoji:'🥞'},
+  {id:'korean',label:'Korean',color:'#9E4A1E',bg:'#FAF2EE',emoji:'🥩'},
+  {id:'indian',label:'Indian',color:'#E8A838',bg:'#FEF3C7',emoji:'🍲'},
+];
+
+// ── Seed Venues ────────────────────────────────────────────
+const SEED_VENUES=[
+  {id:1,name:'Aburi Hana',genre:'japanese',type:'Japanese',hood:'Annex',price:'$$',rating:4.8,count:3,open:true,tags:['Sushi','Ramen'],imgGrad:'linear-gradient(135deg,#E0967A,#C4622D)',desc:'Award-winning Japanese with flame-seared sushi and rich tonkotsu ramen.',address:'619 Bloor St W, Toronto',lat:43.6647,lng:-79.4114,myRating:5,visited:true},
+  {id:2,name:'Shoushin',genre:'japanese',type:'Japanese',hood:'Summerhill',price:'$$$$',rating:4.9,count:1,open:true,tags:['Omakase','Sushi'],imgGrad:'linear-gradient(135deg,#9E4A1E,#C4622D)',desc:'Intimate 10-seat omakase counter. One of Toronto\'s finest sushi experiences.',address:'100 Yorkville Ave, Toronto',lat:43.6712,lng:-79.3927,myRating:5,visited:true},
+  {id:3,name:'Zen Japanese',genre:'japanese',type:'Japanese',hood:'Midtown',price:'$$$',rating:4.6,count:0,open:true,tags:['Sushi','Sake'],imgGrad:'linear-gradient(135deg,#F2E0D5,#9E4A1E)',desc:'Elegant Japanese restaurant with an extensive sake menu.',address:'2220 Yonge St, Toronto',lat:43.6989,lng:-79.3986,myRating:0,visited:false},
+  {id:4,name:'Pilot Coffee Roasters',genre:'cafe',type:'Café',hood:'Distillery',price:'$',rating:4.5,count:2,open:true,tags:['Espresso','Pour-over'],imgGrad:'linear-gradient(135deg,#4A8B5E,#2E5E3B)',desc:'Toronto\'s go-to specialty roaster. Immaculate espresso technique.',address:'49 Bavaria Lane, Toronto',lat:43.6503,lng:-79.3590,myRating:4,visited:true},
+  {id:5,name:'Buttonwood Café',genre:'cafe',type:'Café',hood:'Trinity Bellwoods',price:'$',rating:4.6,count:2,open:true,tags:['Matcha','Cozy'],imgGrad:'linear-gradient(135deg,#D7EBE0,#4A8B5E)',desc:'Known for matcha lattes and seasonal baked goods.',address:'862 Dundas St W, Toronto',lat:43.6498,lng:-79.4178,myRating:4,visited:true},
+  {id:6,name:'Dark Horse Espresso',genre:'cafe',type:'Café',hood:'Queen West',price:'$',rating:4.4,count:3,open:true,tags:['Espresso','Minimal'],imgGrad:'linear-gradient(135deg,#2E2A27,#4A4340)',desc:'Sleek, no-nonsense espresso bar with the most consistent shots in the city.',address:'215 Spadina Ave, Toronto',lat:43.6490,lng:-79.3960,myRating:4,visited:true},
+  {id:7,name:'Sam James Coffee Bar',genre:'cafe',type:'Café',hood:'Harbord Village',price:'$',rating:4.5,count:0,open:true,tags:['Espresso','Tiny'],imgGrad:'linear-gradient(135deg,#EDE8E4,#6B625E)',desc:'Legendary espresso bar in a gloriously tiny space.',address:'297 Harbord St, Toronto',lat:43.6607,lng:-79.4142,myRating:0,visited:false},
+  {id:8,name:'Kōst Restaurant',genre:'mediterranean',type:'Mediterranean',hood:'King West',price:'$$$',rating:4.9,count:1,open:false,tags:['Rooftop','Date night'],imgGrad:'linear-gradient(135deg,#E8A838,#C4622D)',desc:'Rooftop Mediterranean with panoramic downtown views.',address:'181 Wellington St W, Toronto',lat:43.6451,lng:-79.3844,myRating:5,visited:true},
+  {id:9,name:'Byblos',genre:'mediterranean',type:'Mediterranean',hood:'King West',price:'$$$',rating:4.7,count:0,open:true,tags:['Lebanese','Cocktails'],imgGrad:'linear-gradient(135deg,#FEF3C7,#E8A838)',desc:'Eastern Mediterranean cuisine in a stunning space. The cauliflower is legendary.',address:'11 Duncan St, Toronto',lat:43.6482,lng:-79.3908,myRating:0,visited:false},
+  {id:10,name:'Le Gourmand',genre:'french',type:'French Bistro',hood:'Roncesvalles',price:'$$',rating:4.3,count:1,open:true,tags:['Brunch','Patio'],imgGrad:'linear-gradient(135deg,#C2BAB6,#9E4A1E)',desc:'Charming bistro. The croque madame is legendary.',address:'152 Roncesvalles Ave, Toronto',lat:43.6467,lng:-79.4497,myRating:4,visited:true},
+  {id:11,name:"Café Boulud",genre:'french',type:'French',hood:'Yorkville',price:'$$$$',rating:4.8,count:0,open:true,tags:['Fine dining','Wine'],imgGrad:'linear-gradient(135deg,#EDE8E4,#C2BAB6)',desc:'Daniel Boulud\'s Toronto outpost. Refined French cuisine in Yorkville.',address:'60 Yorkville Ave, Toronto',lat:43.6715,lng:-79.3944,myRating:0,visited:false},
+  {id:12,name:'Seven Lives Tacos',genre:'mexican',type:'Mexican',hood:'Kensington',price:'$',rating:4.7,count:4,open:true,tags:['Tacos','Casual'],imgGrad:'linear-gradient(135deg,#F2E0D5,#C4622D)',desc:'The Gobernador taco is one of Toronto\'s most iconic bites.',address:'69 Kensington Ave, Toronto',lat:43.6548,lng:-79.4012,myRating:5,visited:true},
+  {id:13,name:'El Rey Mezcal Bar',genre:'mexican',type:'Mexican',hood:'Dundas West',price:'$$',rating:4.5,count:0,open:true,tags:['Mezcal','Tacos'],imgGrad:'linear-gradient(135deg,#C4622D,#9E4A1E)',desc:'Mezcal bar with excellent tacos and one of the best agave selections in the city.',address:'1192 Dundas St W, Toronto',lat:43.6527,lng:-79.4261,myRating:0,visited:false},
+  {id:14,name:'Grand Electric',genre:'mexican',type:'Mexican',hood:'Parkdale',price:'$$',rating:4.4,count:0,open:true,tags:['Tacos','Loud','Fun'],imgGrad:'linear-gradient(135deg,#E0967A,#7A3410)',desc:'Loud, fun taqueria with a cult following. The baja fish taco is essential.',address:'1330 Queen St W, Toronto',lat:43.6383,lng:-79.4366,myRating:0,visited:false},
+  {id:15,name:'Pai Northern Thai',genre:'thai',type:'Thai',hood:'Entertainment District',price:'$$',rating:4.6,count:2,open:true,tags:['Khao Soi','Curry'],imgGrad:'linear-gradient(135deg,#F2E0D5,#E8A838)',desc:'The Khao Soi is legendary — rich coconut broth with egg noodles.',address:'18 Duncan St, Toronto',lat:43.6479,lng:-79.3904,myRating:5,visited:true},
+  {id:16,name:'Sukhothai',genre:'thai',type:'Thai',hood:'Leslieville',price:'$',rating:4.3,count:0,open:true,tags:['Thai','Casual'],imgGrad:'linear-gradient(135deg,#D7EBE0,#4A8B5E)',desc:'Beloved neighbourhood Thai with big flavours and small prices.',address:'1544 Queen St E, Toronto',lat:43.6623,lng:-79.3285,myRating:0,visited:false},
+  {id:17,name:'Terroni',genre:'italian',type:'Italian',hood:'Yonge & Eglinton',price:'$$',rating:4.5,count:0,open:true,tags:['Pizza','Pasta'],imgGrad:'linear-gradient(135deg,#E0967A,#7A3410)',desc:'Authentic Southern Italian. Wood-fired pizza and hand-made pasta.',address:'1095 Yonge St, Toronto',lat:43.6850,lng:-79.3930,myRating:0,visited:false},
+  {id:18,name:'Giulietta',genre:'italian',type:'Italian',hood:'Ossington',price:'$$$',rating:4.7,count:0,open:true,tags:['Pasta','Wine'],imgGrad:'linear-gradient(135deg,#FAF2EE,#C4622D)',desc:'Handmade pasta and natural wine in a beautiful Ossington space.',address:'972 College St, Toronto',lat:43.6548,lng:-79.4254,myRating:0,visited:false},
+  {id:19,name:'Eggspectation',genre:'brunch',type:'Brunch',hood:'Yorkville',price:'$$',rating:4.2,count:0,open:true,tags:['Eggs','Weekend'],imgGrad:'linear-gradient(135deg,#FEF3C7,#E8A838)',desc:'Brunch institution known for creative egg dishes.',address:'220 Bloor St W, Toronto',lat:43.6678,lng:-79.3952,myRating:0,visited:false},
+  {id:20,name:'Lady Marmalade',genre:'brunch',type:'Brunch',hood:'Leslieville',price:'$',rating:4.5,count:0,open:true,tags:['Brunch','Cozy'],imgGrad:'linear-gradient(135deg,#F2E0D5,#E8A838)',desc:'East-end brunch favourite. Expect a queue, worth every minute.',address:'265 Broadview Ave, Toronto',lat:43.6649,lng:-79.3538,myRating:0,visited:false},
+  {id:21,name:'Aunties & Uncles',genre:'brunch',type:'Brunch',hood:'Kensington',price:'$',rating:4.6,count:0,open:true,tags:['Breakfast','Classic'],imgGrad:'linear-gradient(135deg,#FEF3C7,#C4622D)',desc:'No-frills breakfast institution. The pancakes are the stuff of legend.',address:'74 Lippincott St, Toronto',lat:43.6575,lng:-79.4068,myRating:0,visited:false},
+  {id:22,name:'Asha\'s Indian Cuisine',genre:'indian',type:'Indian',hood:'Little India',price:'$',rating:4.4,count:0,open:true,tags:['Curry','Vegetarian'],imgGrad:'linear-gradient(135deg,#FEF3C7,#E8A838)',desc:'Authentic South Indian cooking on Gerrard Street. The dosas are phenomenal.',address:'1388 Gerrard St E, Toronto',lat:43.6734,lng:-79.3347,myRating:0,visited:false},
+  {id:23,name:'Lahore Tikka House',genre:'indian',type:'Indian',hood:'Little India',price:'$',rating:4.6,count:0,open:true,tags:['Tikka','Halal'],imgGrad:'linear-gradient(135deg,#E8A838,#9E4A1E)',desc:'A Toronto institution for tandoori and tikka. Open late, always packed.',address:'1365 Gerrard St E, Toronto',lat:43.6733,lng:-79.3356,myRating:0,visited:false},
+  {id:24,name:'Joongboo Market Grill',genre:'korean',type:'Korean',hood:'Koreatown',price:'$$',rating:4.5,count:0,open:true,tags:['BBQ','Korean'],imgGrad:'linear-gradient(135deg,#FAF2EE,#C4622D)',desc:'Korean BBQ done right. All-you-can-eat option available.',address:'658 Bloor St W, Toronto',lat:43.6647,lng:-79.4148,myRating:0,visited:false},
+  {id:25,name:'Korean Village Restaurant',genre:'korean',type:'Korean',hood:'Koreatown',price:'$',rating:4.3,count:0,open:true,tags:['Korean','Homestyle'],imgGrad:'linear-gradient(135deg,#F2E0D5,#9E4A1E)',desc:'Family-run Korean classics. The sundubu jjigae warms the soul.',address:'628 Bloor St W, Toronto',lat:43.6645,lng:-79.4138,myRating:0,visited:false},
+];
+
+const SEED_REVIEWS=[
+  {id:1,venueId:1,date:'March 2024',rating:5,text:'Easily the best ramen in Toronto. Spicy miso broth — rich and perfectly complex. Will be back next week.'},
+  {id:2,venueId:1,date:'Jan 2024',rating:5,text:'Tried the omakase. Every course was thoughtful, sake pairing exceptional. Pricey but worth every penny.'},
+  {id:3,venueId:1,date:'Nov 2023',rating:4,text:'Third visit. Sashimi platter incredible as always. Service a bit slower but quality never wavers.'},
+  {id:4,venueId:2,date:'Feb 2024',rating:5,text:'Shoushin is something else. Ten courses, each one better than the last. Booked two months in advance — worth it.'},
+  {id:5,venueId:4,date:'Feb 2024',rating:4,text:'Pour-over with Ethiopian beans — floral and bright. Great spot to work from in the morning.'},
+  {id:6,venueId:5,date:'Jan 2024',rating:4,text:'Matcha latte is the best in the city — properly bitter. Cozy window seat, great for reading.'},
+  {id:7,venueId:6,date:'April 2024',rating:4,text:'Espresso is dialled in perfectly. No frills, just good coffee. Perfect for a quiet morning.'},
+  {id:8,venueId:6,date:'Feb 2024',rating:4,text:'Double shot on ice. Clean, sweet finish. One of the most consistent shots in the city.'},
+  {id:9,venueId:6,date:'Dec 2023',rating:3,text:'A bit rushed at the counter today. Coffee still great but the experience felt impersonal.'},
+  {id:10,venueId:8,date:'Feb 2024',rating:5,text:'Rooftop view is stunning at sunset. The branzino was perfectly charred. Exceptional cocktail list.'},
+  {id:11,venueId:10,date:'March 2024',rating:4,text:'Croque madame lived up to the hype. Patio is lovely in spring. Wine list well-chosen.'},
+  {id:12,venueId:12,date:'April 2024',rating:5,text:'Gobernador taco is genuinely one of the best things I have eaten in this city. Got there at opening to beat the line.'},
+  {id:13,venueId:12,date:'Feb 2024',rating:5,text:'Second visit. Three tacos, all excellent. The al pastor is also worth getting.'},
+  {id:14,venueId:12,date:'Dec 2023',rating:5,text:'Third time. Never disappoints. Tried the ceviche this time — surprisingly good.'},
+  {id:15,venueId:12,date:'Oct 2023',rating:4,text:'Long queue but moved fast. Only do tacos not burritos — classic Kensington.'},
+  {id:16,venueId:15,date:'March 2024',rating:5,text:'Khao Soi is everything. Rich coconut broth, perfectly balanced heat. Fourth time here.'},
+  {id:17,venueId:15,date:'Jan 2024',rating:5,text:'Tried the green papaya salad. Punchy and fresh. Service always warm.'},
+];
+
+// ── Helpers ────────────────────────────────────────────────
+const loadState = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem('sav_venues')||'null');
+    const r = JSON.parse(localStorage.getItem('sav_reviews')||'null');
+    return { venues: v||SEED_VENUES, reviews: r||SEED_REVIEWS };
+  } catch { return { venues:SEED_VENUES, reviews:SEED_REVIEWS }; }
+};
+const saveVenues = v => localStorage.setItem('sav_venues', JSON.stringify(v));
+const saveReviews = r => localStorage.setItem('sav_reviews', JSON.stringify(r));
+
+// ── Icon ───────────────────────────────────────────────────
+const Icon=({name,size=18,color='currentColor',sw=1.75})=>{
+  const p={
+    search:<><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></>,
+    heart:<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>,
+    'heart-f':<path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" fill="currentColor"/>,
+    camera:<><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></>,
+    'chevron-left':<polyline points="15 18 9 12 15 6"/>,
+    'chevron-up':<polyline points="18 15 12 9 6 15"/>,
+    'chevron-down':<polyline points="6 9 12 15 18 9"/>,
+    filter:<><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></>,
+    'map-pin':<><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></>,
+    share:<><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></>,
+    plus:<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>,
+    clock:<><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></>,
+    phone:<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.64 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.55 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>,
+    grid:<><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></>,
+    list:<><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></>,
+    map:<><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"/><line x1="8" y1="2" x2="8" y2="18"/><line x1="16" y1="6" x2="16" y2="22"/></>,
+    book:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
+    tag:<><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>,
+    x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
+};
+
+const Stars=({rating,size=14})=>(
+  <span style={{display:'inline-flex',gap:1}}>
+    {[1,2,3,4,5].map(i=>(
+      <svg key={i} width={size} height={size} viewBox="0 0 24 24" fill={i<=Math.round(rating)?'#F5C518':'#EDE8E4'} stroke={i<=Math.round(rating)?'#F5C518':'#EDE8E4'} strokeWidth="1">
+        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+      </svg>
+    ))}
+  </span>
+);
+
+const Badge=({children,variant='default',style:sx})=>{
+  const v={default:{background:C.n200,color:C.n700},primary:{background:C.primaryLight,color:C.primaryDark},green:{background:C.greenLight,color:C.green},dark:{background:C.n900,color:C.white}};
+  return <span style={{display:'inline-flex',alignItems:'center',gap:3,padding:'3px 9px',borderRadius:9999,fontSize:12,fontWeight:600,fontFamily:"'DM Sans',sans-serif",...v[variant],...sx}}>{children}</span>;
+};
+
+// ── useWindowSize ──────────────────────────────────────────
+const useWindowSize=()=>{
+  const [w,setW]=React.useState(window.innerWidth);
+  React.useEffect(()=>{const h=()=>setW(window.innerWidth);window.addEventListener('resize',h);return()=>window.removeEventListener('resize',h);},[]);
+  return w;
+};
+
+// ── VenueCard ──────────────────────────────────────────────
+const VenueCard=({venue,onClick,layout='grid'})=>{
+  const [saved,setSaved]=React.useState(false);
+  const shadow='0 1px 3px rgba(26,23,20,0.08), 0 4px 16px rgba(26,23,20,0.06)';
+  const hShadow='0 4px 12px rgba(26,23,20,0.14)';
+  if(layout==='list') return(
+    <div onClick={onClick} style={{background:C.white,borderRadius:12,display:'flex',overflow:'hidden',boxShadow:shadow,cursor:'pointer',transition:'transform 150ms,box-shadow 150ms'}}
+      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow=hShadow;}}
+      onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=shadow;}}>
+      <div style={{width:90,minHeight:90,background:venue.imgGrad,flexShrink:0}}/>
+      <div style={{padding:'10px 12px',flex:1}}>
+        <div style={{fontFamily:"'Playfair Display',serif",fontWeight:600,fontSize:15,color:C.n900,marginBottom:2}}>{venue.name}</div>
+        <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:3}}><Stars rating={venue.rating} size={11}/><span style={{fontSize:11,fontWeight:600,color:C.n900}}>{venue.rating}</span></div>
+        <div style={{fontSize:11,color:C.n400,marginBottom:5}}>{venue.type}·{venue.hood}·{venue.price}</div>
+        <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
+          {venue.open&&<Badge variant="green" style={{fontSize:10,padding:'2px 6px'}}>●Open</Badge>}
+          {!venue.visited&&<Badge variant="dark" style={{fontSize:10,padding:'2px 6px'}}>Want to try</Badge>}
+          {venue.tags.slice(0,1).map(t=><Badge key={t} style={{fontSize:10,padding:'2px 6px'}}>{t}</Badge>)}
+        </div>
+      </div>
+    </div>
+  );
+  return(
+    <div onClick={onClick} style={{background:C.white,borderRadius:12,overflow:'hidden',boxShadow:shadow,cursor:'pointer',transition:'transform 150ms,box-shadow 150ms',position:'relative'}}
+      onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow=hShadow;}}
+      onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow=shadow;}}>
+      <div style={{height:120,background:venue.imgGrad,position:'relative'}}>
+        <button onClick={e=>{e.stopPropagation();setSaved(!saved);}} style={{position:'absolute',top:8,right:8,background:'rgba(255,255,255,0.9)',border:'none',borderRadius:'50%',width:28,height:28,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:saved?C.primary:C.n400}}>
+          <Icon name={saved?'heart-f':'heart'} size={13}/>
+        </button>
+        {!venue.visited&&<div style={{position:'absolute',bottom:8,left:8,background:C.n900,color:'white',fontSize:10,fontWeight:600,padding:'2px 7px',borderRadius:9999,fontFamily:"'DM Sans',sans-serif"}}>Want to try</div>}
+      </div>
+      <div style={{padding:'9px 11px 12px'}}>
+        <div style={{fontFamily:"'Playfair Display',serif",fontWeight:600,fontSize:14,color:C.n900,marginBottom:2}}>{venue.name}</div>
+        <div style={{display:'flex',alignItems:'center',gap:4,marginBottom:2}}><Stars rating={venue.rating} size={11}/><span style={{fontSize:11,fontWeight:600,color:C.n900}}>{venue.rating}</span><span style={{fontSize:11,color:C.n400}}>({venue.count})</span></div>
+        <div style={{fontSize:11,color:C.n400,marginBottom:6}}>{venue.type}·{venue.hood}·{venue.price}</div>
+        <div style={{display:'flex',gap:3,flexWrap:'wrap'}}>
+          {venue.open&&<Badge variant="green" style={{fontSize:10,padding:'2px 6px'}}>●Open</Badge>}
+          {venue.tags.slice(0,1).map(t=><Badge key={t} variant="primary" style={{fontSize:10,padding:'2px 6px'}}>{t}</Badge>)}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── LeafletMap ─────────────────────────────────────────────
+const LeafletMap=({venues,activeFilter,onVenueSelect,highlightId,onHighlight})=>{
+  const mapRef=React.useRef(null);
+  const instRef=React.useRef(null);
+  const markersRef=React.useRef({});
+
+  const pinSvg=(color,scale=1)=>{const w=Math.round(28*scale),h=Math.round(36*scale);return`<svg width="${w}" height="${h}" viewBox="0 0 28 36" xmlns="http://www.w3.org/2000/svg"><path d="M14 0C6.268 0 0 6.268 0 14c0 9.333 14 22 14 22S28 23.333 28 14C28 6.268 21.732 0 14 0z" fill="${color}" stroke="white" stroke-width="1.5"/><circle cx="14" cy="14" r="5" fill="white"/></svg>`;};
+  const pinColor=v=>v.type==='Café'?'#2E5E3B':'#C4622D';
+  const makeIcon=(v,active=false)=>L.divIcon({html:pinSvg(active?'#E8A838':pinColor(v),active?1.3:1),className:'',iconAnchor:active?[18,47]:[14,36],popupAnchor:[0,-38]});
+  const popupHtml=v=>`<div style="font-family:'DM Sans',sans-serif;min-width:200px;padding:2px"><div style="height:72px;background:${v.imgGrad};border-radius:8px;margin-bottom:9px"></div><div style="font-family:'Playfair Display',serif;font-weight:600;font-size:14px;color:#1A1714;margin-bottom:2px">${v.name}</div><div style="display:flex;align-items:center;gap:4px;margin-bottom:2px"><span style="color:#F5C518;font-size:12px">${'★'.repeat(Math.round(v.rating))}${'☆'.repeat(5-Math.round(v.rating))}</span><span style="font-size:11px;font-weight:600;color:#1A1714">${v.rating}</span></div><div style="font-size:11px;color:#9C9390;margin-bottom:5px">${v.type}·${v.hood}·${v.price}</div><div style="font-size:11px;color:#6B625E;margin-bottom:7px">📍${v.address}</div><div style="display:flex;gap:5px;margin-bottom:8px">${v.open?'<span style="background:#D7EBE0;color:#2E5E3B;font-size:10px;font-weight:600;padding:2px 7px;border-radius:9999px">●Open</span>':'<span style="background:#EDE8E4;color:#6B625E;font-size:10px;font-weight:600;padding:2px 7px;border-radius:9999px">Closed</span>'}${!v.visited?'<span style="background:#1A1714;color:white;font-size:10px;font-weight:600;padding:2px 7px;border-radius:9999px">Want to try</span>':''}</div><button onclick="window.__savourGo(${v.id})" style="width:100%;padding:7px;background:#C4622D;color:white;border:none;border-radius:7px;font-family:'DM Sans',sans-serif;font-weight:600;font-size:12px;cursor:pointer">View venue →</button></div>`;
+
+  React.useEffect(()=>{
+    if(!mapRef.current||instRef.current)return;
+    const map=L.map(mapRef.current,{center:[43.655,-79.395],zoom:13,zoomControl:true});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'©<a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',maxZoom:19}).addTo(map);
+    instRef.current=map;
+    window.__savourGo=id=>{const v=venues.find(x=>x.id===id);if(v)onVenueSelect(v);};
+    venues.forEach(v=>{
+      const m=L.marker([v.lat,v.lng],{icon:makeIcon(v)}).addTo(map).bindPopup(popupHtml(v),{maxWidth:230,className:'savour-popup'});
+      m.on('click',()=>onHighlight(v.id));
+      markersRef.current[v.id]=m;
+    });
+    return()=>{map.remove();instRef.current=null;};
+  },[]);
+
+  React.useEffect(()=>{
+    const map=instRef.current;if(!map)return;
+    const filteredIds=new Set(venues.map(v=>v.id));
+    [...Object.entries(markersRef.current)].forEach(([id,m])=>{
+      if(filteredIds.has(Number(id))){if(!map.hasLayer(m))m.addTo(map);}
+      else{map.removeLayer(m);}
+    });
+    // Add new markers not yet tracked
+    venues.forEach(v=>{
+      if(!markersRef.current[v.id]){
+        const m=L.marker([v.lat,v.lng],{icon:makeIcon(v)}).addTo(map).bindPopup(popupHtml(v),{maxWidth:230,className:'savour-popup'});
+        m.on('click',()=>onHighlight(v.id));
+        markersRef.current[v.id]=m;
+      }
+    });
+    window.__savourGo=id=>{const v=venues.find(x=>x.id===id);if(v)onVenueSelect(v);};
+  },[venues,activeFilter]);
+
+  React.useEffect(()=>{
+    venues.forEach(v=>{const m=markersRef.current[v.id];if(m)m.setIcon(makeIcon(v,v.id===highlightId));});
+    if(highlightId){const m=markersRef.current[highlightId];if(m){m.openPopup();instRef.current?.panTo(m.getLatLng(),{animate:true});}}
+  },[highlightId]);
+
+  return <div ref={mapRef} style={{width:'100%',height:'100%'}}/>;
+};
+
+// ── AddVenueModal ──────────────────────────────────────────
+const GRAD_OPTIONS=[
+  'linear-gradient(135deg,#E0967A,#C4622D)',
+  'linear-gradient(135deg,#4A8B5E,#2E5E3B)',
+  'linear-gradient(135deg,#E8A838,#C4622D)',
+  'linear-gradient(135deg,#C2BAB6,#9E4A1E)',
+  'linear-gradient(135deg,#F2E0D5,#C4622D)',
+  'linear-gradient(135deg,#D7EBE0,#4A8B5E)',
+  'linear-gradient(135deg,#FEF3C7,#E8A838)',
+  'linear-gradient(135deg,#FAF2EE,#9E4A1E)',
+  'linear-gradient(135deg,#2E2A27,#4A4340)',
+  'linear-gradient(135deg,#9E4A1E,#C4622D)',
+];
+
+const AddVenueModal=({onClose,onAdd})=>{
+  const [name,setName]=React.useState('');
+  const [address,setAddress]=React.useState('');
+  const [genre,setGenre]=React.useState('');
+  const [price,setPrice]=React.useState('$$');
+  const [tags,setTags]=React.useState('');
+  const [desc,setDesc]=React.useState('');
+  const [gradIdx,setGradIdx]=React.useState(0);
+  const [loading,setLoading]=React.useState(false);
+  const [error,setError]=React.useState('');
+
+  const submit=async()=>{
+    if(!name.trim()||!address.trim()||!genre){setError('Please fill in name, address and genre.');return;}
+    setLoading(true);setError('');
+    try{
+      const query=encodeURIComponent(address+', Toronto, Ontario, Canada');
+      const res=await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,{headers:{'Accept-Language':'en'}});
+      const data=await res.json();
+      if(!data.length){setError('Address not found. Try a more specific address.');setLoading(false);return;}
+      const {lat,lon,display_name}=data[0];
+      const hood=display_name.split(',')[2]?.trim()||'Toronto';
+      const g=GENRES.find(x=>x.id===genre);
+      const newVenue={
+        id:Date.now(),name:name.trim(),genre,
+        type:g?.label||genre,hood,price,
+        rating:0,count:0,open:true,
+        tags:tags.split(',').map(t=>t.trim()).filter(Boolean),
+        imgGrad:GRAD_OPTIONS[gradIdx],
+        desc:desc.trim()||'Added to my journal.',
+        address:address.trim(),
+        lat:parseFloat(lat),lng:parseFloat(lon),
+        myRating:0,visited:false,
+      };
+      onAdd(newVenue);
+    }catch(e){setError('Could not geocode address. Check your connection.');}
+    setLoading(false);
+  };
+
+  return(
+    <div style={{position:'fixed',inset:0,background:'rgba(26,23,20,0.55)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:16,animation:'fadeIn 150ms ease'}} onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={{background:'white',borderRadius:20,width:'100%',maxWidth:480,maxHeight:'90vh',overflowY:'auto',padding:24,boxShadow:'0 16px 48px rgba(26,23,20,0.2)'}}>
+        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:20}}>
+          <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:22,color:C.n900}}>Add a venue</div>
+          <button onClick={onClose} style={{background:C.n100,border:'none',borderRadius:'50%',width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:C.n600}}><Icon name="x" size={16}/></button>
+        </div>
+
+        {[['Venue name','text',name,setName,'e.g. Kōst Restaurant'],['Address in Toronto','text',address,setAddress,'e.g. 181 Wellington St W']].map(([label,type,val,set,ph])=>(
+          <div key={label} style={{marginBottom:14}}>
+            <div style={{fontSize:13,fontWeight:600,color:C.n900,marginBottom:5}}>{label}</div>
+            <input type={type} value={val} onChange={e=>set(e.target.value)} placeholder={ph}
+              style={{width:'100%',padding:'9px 12px',border:`1.5px solid ${C.n200}`,borderRadius:8,fontFamily:"'DM Sans',sans-serif",fontSize:14,color:C.n900,outline:'none'}}
+              onFocus={e=>e.target.style.borderColor=C.primary} onBlur={e=>e.target.style.borderColor=C.n200}/>
+          </div>
+        ))}
+
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.n900,marginBottom:5}}>Genre</div>
+          <div style={{display:'flex',flexWrap:'wrap',gap:6}}>
+            {GENRES.map(g=>(
+              <button key={g.id} onClick={()=>setGenre(g.id)} style={{padding:'5px 12px',borderRadius:9999,border:`1.5px solid ${genre===g.id?g.color:C.n200}`,background:genre===g.id?g.bg:'white',color:genre===g.id?g.color:C.n700,fontSize:12,fontWeight:500,cursor:'pointer',fontFamily:"'DM Sans',sans-serif",transition:'all 120ms'}}>
+                {g.emoji} {g.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:14}}>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:C.n900,marginBottom:5}}>Price</div>
+            <div style={{display:'flex',gap:4}}>
+              {['$','$$','$$$','$$$$'].map(p=>(
+                <button key={p} onClick={()=>setPrice(p)} style={{flex:1,padding:'6px 4px',border:`1.5px solid ${price===p?C.primary:C.n200}`,background:price===p?C.primaryLight:'white',borderRadius:7,fontSize:12,fontWeight:600,color:price===p?C.primary:C.n700,cursor:'pointer',fontFamily:"'DM Sans',sans-serif"}}>{p}</button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div style={{fontSize:13,fontWeight:600,color:C.n900,marginBottom:5}}>Card colour</div>
+            <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+              {GRAD_OPTIONS.slice(0,6).map((g,i)=>(
+                <div key={i} onClick={()=>setGradIdx(i)} style={{width:28,height:28,borderRadius:6,background:g,cursor:'pointer',outline:gradIdx===i?`2px solid ${C.primary}`:none,outlineOffset:2}}/>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{marginBottom:14}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.n900,marginBottom:5}}>Tags <span style={{fontWeight:400,color:C.n400}}>(comma separated)</span></div>
+          <input value={tags} onChange={e=>setTags(e.target.value)} placeholder="e.g. Sushi, Date night, Sake"
+            style={{width:'100%',padding:'9px 12px',border:`1.5px solid ${C.n200}`,borderRadius:8,fontFamily:"'DM Sans',sans-serif",fontSize:14,color:C.n900,outline:'none'}}
+            onFocus={e=>e.target.style.borderColor=C.primary} onBlur={e=>e.target.style.borderColor=C.n200}/>
+        </div>
+
+        <div style={{marginBottom:20}}>
+          <div style={{fontSize:13,fontWeight:600,color:C.n900,marginBottom:5}}>Notes <span style={{fontWeight:400,color:C.n400}}>(optional)</span></div>
+          <textarea value={desc} onChange={e=>setDesc(e.target.value)} placeholder="Why do you want to try this place?"
+            style={{width:'100%',minHeight:72,border:`1.5px solid ${C.n200}`,borderRadius:8,padding:'9px 12px',fontFamily:"'DM Sans',sans-serif",fontSize:14,color:C.n900,resize:'none',outline:'none',lineHeight:1.5}}
+            onFocus={e=>e.target.style.borderColor=C.primary} onBlur={e=>e.target.style.borderColor=C.n200}/>
+        </div>
+
+        {error&&<div style={{background:'#FEF2F2',color:'#B91C1C',fontSize:13,padding:'8px 12px',borderRadius:8,marginBottom:14}}>{error}</div>}
+
+        <button onClick={submit} disabled={loading} style={{width:'100%',padding:12,background:loading?C.n200:C.primary,color:loading?C.n400:'white',border:'none',borderRadius:10,fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:15,cursor:loading?'not-allowed':'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          {loading?<><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{animation:'spin 0.8s linear infinite'}}><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4"/></svg>Finding on map…</>:<><Icon name="map-pin" size={16}/>Add to my map</>}
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// ── MapScreen ──────────────────────────────────────────────
+const MapScreen=({venues,onVenueSelect,onAddVenue})=>{
+  const [activeFilter,setActiveFilter]=React.useState('All');
+  const [highlightId,setHighlightId]=React.useState(null);
+  const [viewMode,setViewMode]=React.useState('list');
+  const [showSheet,setShowSheet]=React.useState(false);
+  const [showAdd,setShowAdd]=React.useState(false);
+  const isMobile=useWindowSize()<768;
+  const filters=['All','Restaurants','Cafés','Open now','Visited','Want to try'];
+
+  const filtered=venues.filter(v=>{
+    if(activeFilter==='All')return true;
+    if(activeFilter==='Restaurants')return v.type!=='Café';
+    if(activeFilter==='Cafés')return v.type==='Café';
+    if(activeFilter==='Open now')return v.open;
+    if(activeFilter==='Visited')return v.visited;
+    if(activeFilter==='Want to try')return!v.visited;
+    return true;
+  });
+
+  const SidebarContent=(
+    <>
+      <div style={{padding:'12px 14px 8px',borderBottom:`1px solid ${C.n200}`,flexShrink:0}}>
+        <div style={{display:'flex',gap:5,overflowX:'auto',paddingBottom:2}}>
+          {filters.map(f=>(
+            <button key={f} onClick={()=>setActiveFilter(f)} style={{background:activeFilter===f?C.primary:C.white,color:activeFilter===f?C.white:C.n700,border:`1.5px solid ${activeFilter===f?C.primary:C.n200}`,borderRadius:9999,padding:'5px 12px',fontSize:12,fontWeight:500,fontFamily:"'DM Sans',sans-serif",cursor:'pointer',flexShrink:0,transition:'all 150ms',whiteSpace:'nowrap'}}>{f}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{padding:'8px 12px',display:'flex',alignItems:'center',justifyContent:'space-between',borderBottom:`1px solid ${C.n200}`,flexShrink:0}}>
+        <span style={{fontSize:12,color:C.n400}}>{filtered.length} spots</span>
+        {!isMobile&&<div style={{display:'flex',gap:2}}>
+          {['grid','list'].map(m=>(
+            <button key={m} onClick={()=>setViewMode(m)} style={{background:viewMode===m?C.primaryLight:'transparent',border:'none',borderRadius:6,padding:'4px 7px',cursor:'pointer',color:viewMode===m?C.primary:C.n400}}><Icon name={m} size={14}/></button>
+          ))}
+        </div>}
+      </div>
+      <div style={{flex:1,overflowY:'auto',padding:10}}>
+        {(isMobile||viewMode==='list')?(
+          <div style={{display:'flex',flexDirection:'column',gap:7}}>
+            {filtered.map(v=>(
+              <div key={v.id} onMouseEnter={()=>!isMobile&&setHighlightId(v.id)} onMouseLeave={()=>!isMobile&&setHighlightId(null)} style={{borderRadius:12,outline:highlightId===v.id?`2px solid ${C.primary}`:'2px solid transparent',transition:'outline 120ms'}}>
+                <VenueCard venue={v} layout="list" onClick={()=>{onVenueSelect(v);isMobile&&setShowSheet(false);}}/>
+              </div>
+            ))}
+          </div>
+        ):(
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
+            {filtered.map(v=>(
+              <div key={v.id} onMouseEnter={()=>setHighlightId(v.id)} onMouseLeave={()=>setHighlightId(null)}>
+                <VenueCard venue={v} layout="grid" onClick={()=>onVenueSelect(v)}/>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </>
+  );
+
+  return(
+    <div style={{display:'flex',height:`calc(100vh - ${isMobile?56:64}px)`,overflow:'hidden',position:'relative'}}>
+      {/* Desktop sidebar */}
+      {!isMobile&&(
+        <div style={{width:360,background:C.white,borderRight:`1px solid ${C.n200}`,display:'flex',flexDirection:'column',flexShrink:0}}>
+          {SidebarContent}
+        </div>
+      )}
+
+      {/* Map */}
+      <div style={{flex:1,position:'relative'}}>
+        <LeafletMap venues={filtered} activeFilter={activeFilter} onVenueSelect={v=>{onVenueSelect(v);setShowSheet(false);}} highlightId={highlightId} onHighlight={setHighlightId}/>
+
+        {/* Mobile: filter pill + list toggle */}
+        {isMobile&&(
+          <div style={{position:'absolute',top:12,left:12,right:12,zIndex:400,display:'flex',gap:8}}>
+            <div style={{background:'white',borderRadius:9999,padding:'8px 14px',boxShadow:'0 2px 8px rgba(26,23,20,0.15)',flex:1,display:'flex',gap:5,overflowX:'auto'}}>
+              {filters.map(f=>(
+                <button key={f} onClick={()=>setActiveFilter(f)} style={{background:activeFilter===f?C.primary:'transparent',color:activeFilter===f?C.white:C.n700,border:'none',borderRadius:9999,padding:'3px 10px',fontSize:11,fontWeight:500,fontFamily:"'DM Sans',sans-serif",cursor:'pointer',flexShrink:0,whiteSpace:'nowrap'}}>{f}</button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* FAB: Add venue */}
+        <button onClick={()=>setShowAdd(true)} style={{position:'absolute',bottom:isMobile?80:24,right:16,zIndex:400,background:C.primary,color:'white',border:'none',borderRadius:9999,padding:'12px 18px',fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,cursor:'pointer',boxShadow:'0 4px 16px rgba(196,98,45,0.4)',display:'flex',alignItems:'center',gap:7,transition:'transform 150ms,box-shadow 150ms'}}
+          onMouseEnter={e=>{e.currentTarget.style.transform='scale(1.04)';e.currentTarget.style.boxShadow='0 6px 20px rgba(196,98,45,0.5)';}}
+          onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow='0 4px 16px rgba(196,98,45,0.4)';}}>
+          <Icon name="plus" size={16}/>{isMobile?'Add':'Add venue'}
+        </button>
+
+        {/* Mobile: list toggle button */}
+        {isMobile&&(
+          <button onClick={()=>setShowSheet(!showSheet)} style={{position:'absolute',bottom:16,left:'50%',transform:'translateX(-50%)',zIndex:400,background:C.n900,color:'white',border:'none',borderRadius:9999,padding:'10px 20px',fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:13,cursor:'pointer',boxShadow:'0 4px 16px rgba(26,23,20,0.25)',display:'flex',alignItems:'center',gap:7}}>
+            <Icon name={showSheet?'map':'list'} size={14}/>{showSheet?'Map':'List'} ({filtered.length})
+          </button>
+        )}
+      </div>
+
+      {/* Mobile bottom sheet */}
+      {isMobile&&showSheet&&(
+        <div style={{position:'absolute',inset:0,zIndex:500,display:'flex',flexDirection:'column',justifyContent:'flex-end'}} onClick={e=>{if(e.target===e.currentTarget)setShowSheet(false);}}>
+          <div style={{background:C.white,borderRadius:'20px 20px 0 0',maxHeight:'75vh',display:'flex',flexDirection:'column',boxShadow:'0 -4px 24px rgba(26,23,20,0.15)',animation:'slideUp 250ms ease'}}>
+            <div style={{padding:'10px 0 6px',display:'flex',justifyContent:'center'}}>
+              <div style={{width:36,height:4,borderRadius:9999,background:C.n200,cursor:'pointer'}} onClick={()=>setShowSheet(false)}/>
+            </div>
+            {SidebarContent}
+          </div>
+        </div>
+      )}
+
+      {showAdd&&<AddVenueModal onClose={()=>setShowAdd(false)} onAdd={v=>{onAddVenue(v);setShowAdd(false);}}/>}
+    </div>
+  );
+};
+
+// ── NavBar ─────────────────────────────────────────────────
+const NavBar=({screen,onNav})=>{
+  const isMobile=useWindowSize()<768;
+  if(isMobile) return(
+    <nav style={{position:'fixed',bottom:0,left:0,right:0,height:56,background:C.white,borderTop:`1px solid ${C.n200}`,display:'flex',alignItems:'center',justifyContent:'space-around',zIndex:600,boxShadow:'0 -1px 8px rgba(26,23,20,0.08)'}}>
+      {[['map','map','Map'],['genres','tag','Genres'],['journal','book','Journal']].map(([id,icon,label])=>(
+        <button key={id} onClick={()=>onNav(id)} style={{display:'flex',flexDirection:'column',alignItems:'center',gap:3,background:'none',border:'none',cursor:'pointer',color:screen===id?C.primary:C.n400,fontFamily:"'DM Sans',sans-serif",fontSize:10,fontWeight:screen===id?600:400,padding:'6px 20px',minWidth:60}}>
+          <Icon name={icon} size={20} color={screen===id?C.primary:C.n400}/>
+          {label}
+        </button>
+      ))}
+    </nav>
+  );
+  return(
+    <nav style={{height:64,background:C.white,borderBottom:`1px solid ${C.n200}`,display:'flex',alignItems:'center',padding:'0 24px',gap:24,position:'sticky',top:0,zIndex:100,boxShadow:'0 1px 3px rgba(26,23,20,0.06)'}}>
+      <div onClick={()=>onNav('map')} style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',flexShrink:0}}>
+        <svg width="22" height="28" viewBox="0 0 32 40"><path d="M16 0C7.163 0 0 7.163 0 16c0 10.667 16 24 16 24S32 26.667 32 16C32 7.163 24.837 0 16 0z" fill="#C4622D"/><circle cx="16" cy="16" r="5" fill="white"/></svg>
+        <span style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:20,color:C.n900,letterSpacing:'-0.3px'}}>Savour <span style={{fontFamily:"'DM Sans',sans-serif",fontSize:13,fontWeight:600,color:C.primary,letterSpacing:2}}>TO</span></span>
+      </div>
+      <div style={{flex:1,maxWidth:400,position:'relative'}}>
+        <div style={{position:'absolute',left:13,top:'50%',transform:'translateY(-50%)',color:C.n400,pointerEvents:'none'}}><Icon name="search" size={15}/></div>
+        <input style={{width:'100%',padding:'8px 14px 8px 38px',borderRadius:9999,border:`1.5px solid ${C.n200}`,fontFamily:"'DM Sans',sans-serif",fontSize:13,color:C.n900,background:C.n100,outline:'none'}} placeholder="Search my journal…"/>
+      </div>
+      <div style={{display:'flex',gap:2,marginLeft:'auto',alignItems:'center'}}>
+        {[['map','Map'],['genres','Genres'],['journal','My journal']].map(([id,label])=>(
+          <button key={id} onClick={()=>onNav(id)} style={{background:screen===id?C.primaryLight:'transparent',color:screen===id?C.primary:C.n600,border:'none',cursor:'pointer',padding:'7px 14px',borderRadius:8,fontFamily:"'DM Sans',sans-serif",fontWeight:500,fontSize:14,transition:'all 150ms',whiteSpace:'nowrap'}}>{label}</button>
+        ))}
+      </div>
+    </nav>
+  );
+};
+
+// ── VenueScreen ────────────────────────────────────────────
+const VenueScreen=({venue,reviews,onBack,onWriteReview})=>{
+  const [tab,setTab]=React.useState('reviews');
+  const [saved,setSaved]=React.useState(false);
+  const isMobile=useWindowSize()<768;
+  const myReviews=reviews.filter(r=>r.venueId===venue.id);
+  const photoGrads=[venue.imgGrad,'linear-gradient(135deg,#D7EBE0,#2E5E3B)','linear-gradient(135deg,#F2E0D5,#C4622D)','linear-gradient(135deg,#EDE8E4,#9C9390)','linear-gradient(135deg,#FAF2EE,#E0967A)','linear-gradient(135deg,#D7EBE0,#4A8B5E)'];
+
+  return(
+    <div style={{maxWidth:800,margin:'0 auto',padding:`0 ${isMobile?16:24}px ${isMobile?80:48}px`}}>
+      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',cursor:'pointer',color:C.primary,fontFamily:"'DM Sans',sans-serif",fontWeight:500,fontSize:14,padding:'14px 0'}}>
+        <Icon name="chevron-left" size={16}/> Back
+      </button>
+      <div style={{borderRadius:14,height:isMobile?200:300,background:venue.imgGrad,marginBottom:20,position:'relative',overflow:'hidden'}}>
+        <div style={{position:'absolute',inset:0,background:'linear-gradient(to top, rgba(26,23,20,0.65) 0%, transparent 55%)'}}/>
+        <div style={{position:'absolute',bottom:16,left:20,right:60}}>
+          <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:isMobile?24:30,color:'white',marginBottom:5}}>{venue.name}</div>
+          <div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}>
+            <Stars rating={venue.rating} size={13}/><span style={{fontSize:13,fontWeight:600,color:'white'}}>{venue.rating}</span>
+            <span style={{fontSize:12,color:'rgba(255,255,255,0.75)'}}>({venue.count} visits)</span>
+            <span style={{fontSize:12,color:'rgba(255,255,255,0.75)'}}>·{venue.type}·{venue.hood}·{venue.price}</span>
+          </div>
+        </div>
+        <div style={{position:'absolute',top:12,right:12,display:'flex',gap:6}}>
+          <button onClick={()=>setSaved(!saved)} style={{background:'rgba(255,255,255,0.9)',border:'none',borderRadius:'50%',width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:saved?C.primary:C.n700}}><Icon name={saved?'heart-f':'heart'} size={15}/></button>
+        </div>
+      </div>
+
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
+        {venue.open?<Badge variant="green">●Open now</Badge>:<Badge>●Closed</Badge>}
+        <div style={{display:'flex',alignItems:'center',gap:4,fontSize:12,color:C.n700}}><Icon name="map-pin" size={12} color={C.n400}/>{venue.address}</div>
+      </div>
+      <div style={{display:'flex',gap:5,flexWrap:'wrap',marginBottom:16}}>
+        {venue.tags.map(t=><Badge key={t} variant="primary">{t}</Badge>)}
+      </div>
+      <p style={{fontSize:14,lineHeight:1.7,color:C.n700,marginBottom:24,textWrap:'pretty'}}>{venue.desc}</p>
+
+      <div style={{display:'flex',borderBottom:`2px solid ${C.n200}`,marginBottom:20}}>
+        {['reviews','photos'].map(t=>(
+          <button key={t} onClick={()=>setTab(t)} style={{background:'none',border:'none',cursor:'pointer',padding:'9px 18px',fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,color:tab===t?C.primary:C.n400,borderBottom:tab===t?`2px solid ${C.primary}`:'2px solid transparent',marginBottom:-2,textTransform:'capitalize',transition:'color 150ms'}}>
+            {t==='reviews'?`My visits (${myReviews.length})`:'Photos'}
+          </button>
+        ))}
+      </div>
+
+      {tab==='reviews'&&(
+        <div>
+          <button onClick={onWriteReview} style={{display:'flex',alignItems:'center',gap:8,width:'100%',padding:'12px 16px',background:'#FAF2EE',border:`1.5px dashed #E0967A`,borderRadius:12,fontFamily:"'DM Sans',sans-serif",fontWeight:500,fontSize:14,color:C.primary,cursor:'pointer',marginBottom:16}}>
+            <Icon name="plus" size={16}/> Record a visit
+          </button>
+          {myReviews.length>0&&(
+            <div style={{background:'white',borderRadius:12,padding:'14px 18px',marginBottom:16,boxShadow:'0 1px 3px rgba(26,23,20,0.08)',display:'flex',gap:20,alignItems:'center'}}>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:42,color:C.n900,lineHeight:1}}>{(myReviews.reduce((a,r)=>a+r.rating,0)/myReviews.length).toFixed(1)}</div>
+                <Stars rating={myReviews.reduce((a,r)=>a+r.rating,0)/myReviews.length} size={16}/>
+                <div style={{fontSize:11,color:C.n400,marginTop:4}}>{myReviews.length} {myReviews.length===1?'visit':'visits'}</div>
+              </div>
+              <div style={{flex:1}}>
+                {[5,4,3,2,1].map(n=>{const cnt=myReviews.filter(r=>r.rating===n).length;const pct=myReviews.length?Math.round(cnt/myReviews.length*100):0;return(
+                  <div key={n} style={{display:'flex',alignItems:'center',gap:6,marginBottom:3}}>
+                    <span style={{fontSize:11,color:C.n700,minWidth:7}}>{n}</span>
+                    <div style={{flex:1,height:5,background:C.n200,borderRadius:9999,overflow:'hidden'}}><div style={{width:`${pct}%`,height:'100%',background:'#F5C518',borderRadius:9999}}/></div>
+                    <span style={{fontSize:11,color:C.n400,minWidth:16,textAlign:'right'}}>{cnt}</span>
+                  </div>
+                );})}
+              </div>
+            </div>
+          )}
+          {myReviews.length===0&&<div style={{textAlign:'center',padding:'28px 0',color:C.n400,fontSize:14}}>No visits yet. Record your first one above.</div>}
+          {myReviews.map(r=>(
+            <div key={r.id} style={{background:'white',borderRadius:12,padding:16,marginBottom:10,boxShadow:'0 1px 3px rgba(26,23,20,0.08)'}}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
+                <div style={{fontSize:12,color:C.n400}}>{r.date}</div>
+                <Stars rating={r.rating} size={13}/>
+              </div>
+              <p style={{fontSize:14,lineHeight:1.65,color:C.n700}}>{r.text}</p>
+            </div>
+          ))}
+        </div>
+      )}
+      {tab==='photos'&&(
+        <div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
+            {photoGrads.map((g,i)=><div key={i} style={{borderRadius:8,background:g,aspectRatio:'1',cursor:'pointer',transition:'opacity 150ms'}} onMouseEnter={e=>e.currentTarget.style.opacity='0.8'} onMouseLeave={e=>e.currentTarget.style.opacity='1'}/>)}
+          </div>
+          <div style={{marginTop:10,fontSize:12,color:C.n400,textAlign:'center'}}>Add your photos here</div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ── WriteReviewScreen ──────────────────────────────────────
+const WriteReviewScreen=({venue,onBack,onSave})=>{
+  const [rating,setRating]=React.useState(0);
+  const [hover,setHover]=React.useState(0);
+  const [text,setText]=React.useState('');
+  const [submitted,setSubmitted]=React.useState(false);
+  const isMobile=useWindowSize()<768;
+
+  const submit=()=>{
+    const r={id:Date.now(),venueId:venue.id,date:new Date().toLocaleDateString('en-CA',{year:'numeric',month:'long'}),rating,text};
+    onSave(r);setSubmitted(true);
+  };
+
+  if(submitted)return(
+    <div style={{maxWidth:520,margin:'60px auto',padding:'0 24px',textAlign:'center'}}>
+      <div style={{width:52,height:52,borderRadius:'50%',background:C.primaryLight,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 16px',color:C.primary,fontSize:22}}>✓</div>
+      <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:26,color:C.n900,marginBottom:8}}>Visit recorded</div>
+      <p style={{fontSize:14,color:C.n700,lineHeight:1.65,marginBottom:24}}>Your notes about {venue.name} are saved.</p>
+      <button onClick={onBack} style={{background:C.primary,color:'white',border:'none',borderRadius:8,padding:'10px 24px',fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,cursor:'pointer'}}>Back to {venue.name}</button>
+    </div>
+  );
+
+  const canSubmit=rating>0&&text.length>=10;
+  return(
+    <div style={{maxWidth:580,margin:'0 auto',padding:`0 ${isMobile?16:24}px ${isMobile?80:48}px`}}>
+      <button onClick={onBack} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',cursor:'pointer',color:C.primary,fontFamily:"'DM Sans',sans-serif",fontWeight:500,fontSize:14,padding:'14px 0'}}>
+        <Icon name="chevron-left" size={16}/> Back
+      </button>
+      <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:26,color:C.n900,marginBottom:3}}>Record a visit</div>
+      <div style={{fontSize:13,color:C.n400,marginBottom:24}}>{venue.name}</div>
+
+      {[{label:'Rating',content:(
+        <div style={{display:'flex',gap:6}}>
+          {[1,2,3,4,5].map(n=>(
+            <svg key={n} width={34} height={34} viewBox="0 0 24 24" fill={(hover||rating)>=n?'#F5C518':'#EDE8E4'} stroke={(hover||rating)>=n?'#F5C518':'#EDE8E4'} strokeWidth="1" style={{cursor:'pointer',transition:'transform 100ms',transform:(hover||rating)>=n?'scale(1.15)':'scale(1)'}} onMouseEnter={()=>setHover(n)} onMouseLeave={()=>setHover(0)} onClick={()=>setRating(n)}>
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+            </svg>
+          ))}
+          {rating>0&&<span style={{fontSize:13,color:C.n400,alignSelf:'center',marginLeft:6}}>{['','Terrible','Poor','OK','Good','Excellent'][rating]}</span>}
+        </div>
+      )},{label:'Notes',content:(
+        <><textarea value={text} onChange={e=>setText(e.target.value)} style={{width:'100%',minHeight:130,border:`1.5px solid ${C.n200}`,borderRadius:8,padding:'9px 12px',fontFamily:"'DM Sans',sans-serif",fontSize:14,color:C.n900,resize:'vertical',outline:'none',lineHeight:1.65}} placeholder="What did you order? What stood out? Would you go back?"/>
+        <div style={{fontSize:11,color:C.n400,marginTop:4,textAlign:'right'}}>{text.length}/1000</div></>
+      )},{label:'Photos (optional)',content:(
+        <div style={{border:`1.5px dashed ${C.n200}`,borderRadius:10,padding:18,textAlign:'center',cursor:'pointer'}}>
+          <Icon name="camera" size={22} color="#C2BAB6"/>
+          <div style={{fontSize:12,color:C.n400,marginTop:5}}>Add up to 10 photos</div>
+        </div>
+      )}].map(({label,content})=>(
+        <div key={label} style={{background:'white',borderRadius:12,padding:'18px 20px',marginBottom:12,boxShadow:'0 1px 3px rgba(26,23,20,0.08)'}}>
+          <div style={{fontWeight:600,fontSize:13,color:C.n900,marginBottom:10}}>{label}</div>
+          {content}
+        </div>
+      ))}
+
+      <button onClick={submit} disabled={!canSubmit} style={{width:'100%',padding:12,background:canSubmit?C.primary:C.n200,color:canSubmit?'white':C.n400,border:'none',borderRadius:10,fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:15,cursor:canSubmit?'pointer':'not-allowed',transition:'background 150ms'}}>
+        Save to journal
+      </button>
+    </div>
+  );
+};
+
+// ── GenresScreen ───────────────────────────────────────────
+const GenresScreen=({venues,onVenueSelect})=>{
+  const [selected,setSelected]=React.useState(null);
+  const isMobile=useWindowSize()<768;
+  const genre=GENRES.find(g=>g.id===selected);
+  const genreVenues=selected?venues.filter(v=>v.genre===selected):[];
+
+  if(selected&&genre)return(
+    <div style={{maxWidth:900,margin:'0 auto',padding:`0 ${isMobile?16:24}px ${isMobile?80:48}px`}}>
+      <button onClick={()=>setSelected(null)} style={{display:'flex',alignItems:'center',gap:6,background:'none',border:'none',cursor:'pointer',color:C.primary,fontFamily:"'DM Sans',sans-serif",fontWeight:500,fontSize:14,padding:'14px 0'}}>
+        <Icon name="chevron-left" size={16}/> All genres
+      </button>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:24}}>
+        <div style={{width:52,height:52,borderRadius:14,background:genre.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:26}}>{genre.emoji}</div>
+        <div>
+          <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:26,color:C.n900}}>{genre.label}</div>
+          <div style={{fontSize:13,color:C.n400}}>{genreVenues.length} spots · {genreVenues.filter(v=>v.visited).length} visited</div>
+        </div>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?'150px':'220px'},1fr))`,gap:12}}>
+        {genreVenues.map(v=><VenueCard key={v.id} venue={v} layout="grid" onClick={()=>onVenueSelect(v)}/>)}
+        {!genreVenues.length&&<div style={{color:C.n400,fontSize:14,padding:'20px 0'}}>No venues in this genre yet.</div>}
+      </div>
+    </div>
+  );
+
+  return(
+    <div style={{maxWidth:900,margin:'0 auto',padding:`28px ${isMobile?16:24}px ${isMobile?80:48}px`}}>
+      <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:28,color:C.n900,marginBottom:3}}>Browse by genre</div>
+      <div style={{fontSize:14,color:C.n400,marginBottom:24}}>{venues.filter(v=>v.visited).length} of {venues.length} spots visited</div>
+      <div style={{display:'grid',gridTemplateColumns:`repeat(auto-fill,minmax(${isMobile?'150px':'190px'},1fr))`,gap:10}}>
+        {GENRES.map(g=>{
+          const count=venues.filter(v=>v.genre===g.id).length;
+          const visited=venues.filter(v=>v.genre===g.id&&v.visited).length;
+          return(
+            <div key={g.id} onClick={()=>setSelected(g.id)} style={{background:'white',borderRadius:14,padding:'18px 16px',cursor:'pointer',boxShadow:'0 1px 3px rgba(26,23,20,0.08),0 4px 16px rgba(26,23,20,0.06)',transition:'transform 150ms,box-shadow 150ms',display:'flex',flexDirection:'column',gap:8}}
+              onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';e.currentTarget.style.boxShadow='0 4px 12px rgba(26,23,20,0.14)';}}
+              onMouseLeave={e=>{e.currentTarget.style.transform='';e.currentTarget.style.boxShadow='0 1px 3px rgba(26,23,20,0.08),0 4px 16px rgba(26,23,20,0.06)';}}>
+              <div style={{width:40,height:40,borderRadius:11,background:g.bg,display:'flex',alignItems:'center',justifyContent:'center',fontSize:22}}>{g.emoji}</div>
+              <div>
+                <div style={{fontFamily:"'Playfair Display',serif",fontWeight:600,fontSize:16,color:C.n900,marginBottom:1}}>{g.label}</div>
+                <div style={{fontSize:11,color:C.n400}}>{count} spot{count!==1?'s':''}</div>
+              </div>
+              {count>0&&<div style={{marginTop:'auto'}}>
+                <div style={{height:4,background:C.n100,borderRadius:9999,overflow:'hidden'}}><div style={{width:`${Math.round(visited/count*100)}%`,height:'100%',background:g.color,borderRadius:9999}}/></div>
+                <div style={{fontSize:10,color:C.n400,marginTop:3}}>{visited}/{count} visited</div>
+              </div>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+// ── JournalScreen ──────────────────────────────────────────
+const JournalScreen=({venues,reviews,onVenueSelect})=>{
+  const isMobile=useWindowSize()<768;
+  const all=[...reviews].sort((a,b)=>b.id-a.id);
+  return(
+    <div style={{maxWidth:660,margin:'0 auto',padding:`28px ${isMobile?16:24}px ${isMobile?80:48}px`}}>
+      <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:28,color:C.n900,marginBottom:3}}>My journal</div>
+      <div style={{fontSize:14,color:C.n400,marginBottom:24}}>{all.length} entries · {venues.filter(v=>v.visited).length} venues visited</div>
+      {all.map(r=>{
+        const v=venues.find(x=>x.id===r.venueId);
+        const g=v?GENRES.find(x=>x.id===v.genre):null;
+        if(!v)return null;
+        return(
+          <div key={r.id} style={{background:'white',borderRadius:14,padding:18,marginBottom:9,boxShadow:'0 1px 3px rgba(26,23,20,0.08),0 4px 16px rgba(26,23,20,0.06)',cursor:'pointer',transition:'box-shadow 150ms'}}
+            onClick={()=>onVenueSelect(v)}
+            onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 12px rgba(26,23,20,0.14)'}
+            onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 3px rgba(26,23,20,0.08),0 4px 16px rgba(26,23,20,0.06)'}>
+            <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
+              <div style={{width:42,height:42,borderRadius:10,background:v.imgGrad,flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:2,flexWrap:'wrap'}}>
+                  <div style={{fontFamily:"'Playfair Display',serif",fontWeight:600,fontSize:14,color:C.n900}}>{v.name}</div>
+                  {g&&<span style={{fontSize:10,fontWeight:500,padding:'1px 6px',borderRadius:9999,background:g.bg,color:g.color}}>{g.label}</span>}
+                  <span style={{fontSize:11,color:C.n400,marginLeft:'auto',whiteSpace:'nowrap'}}>{r.date}</span>
+                </div>
+                <div style={{marginBottom:4}}><Stars rating={r.rating} size={11}/></div>
+                <p style={{fontSize:13,lineHeight:1.6,color:C.n600,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{r.text}</p>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {!all.length&&<div style={{textAlign:'center',padding:'48px 0',color:C.n400,fontSize:14}}>No journal entries yet. Visit a venue and record your first visit.</div>}
+    </div>
+  );
+};
+
+// ── App ─────────────────────────────────────────────────────
+const App=()=>{
+  const {venues:sv,reviews:sr}=loadState();
+  const [venues,setVenues]=React.useState(sv);
+  const [reviews,setReviews]=React.useState(sr);
+  const init=JSON.parse(localStorage.getItem('sav_screen')||'{"screen":"map"}');
+  const initScreen=['venue','review'].includes(init.screen)?'map':(init.screen||'map');
+  const [screen,setScreen]=React.useState(initScreen);
+  const [venue,setVenue]=React.useState(null);
+  const isMobile=useWindowSize()<768;
+
+  const go=(s,v=null)=>{setScreen(s);setVenue(v);localStorage.setItem('sav_screen',JSON.stringify({screen:s}));};
+
+  const addVenue=v=>{const next=[...venues,v];setVenues(next);saveVenues(next);};
+  const addReview=r=>{
+    const next=[...reviews,r];setReviews(next);saveReviews(next);
+    // Mark venue as visited
+    const vNext=venues.map(v=>v.id===r.venueId?{...v,visited:true,count:v.count+1,myRating:r.rating,rating:r.rating}:v);
+    setVenues(vNext);saveVenues(vNext);
+  };
+
+  return(
+    <div style={{minHeight:'100vh',background:C.n100,paddingBottom:isMobile?56:0}}>
+      {!isMobile&&<NavBar screen={screen} onNav={s=>go(s)}/>}
+      {screen==='map'    &&<MapScreen venues={venues} onVenueSelect={v=>go('venue',v)} onAddVenue={addVenue}/>}
+      {screen==='venue'  &&venue&&<VenueScreen venue={venue} reviews={reviews} onBack={()=>go('map')} onWriteReview={()=>go('review',venue)}/>}
+      {screen==='review' &&venue&&<WriteReviewScreen venue={venue} onBack={()=>go('venue',venue)} onSave={r=>{addReview(r);}}/>}
+      {screen==='genres' &&<GenresScreen venues={venues} onVenueSelect={v=>go('venue',v)}/>}
+      {screen==='journal'&&<JournalScreen venues={venues} reviews={reviews} onVenueSelect={v=>go('venue',v)}/>}
+      {isMobile&&<NavBar screen={screen} onNav={s=>go(s)}/>}
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

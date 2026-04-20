@@ -126,6 +126,7 @@ const Icon=({name,size=18,color='currentColor',sw=1.75})=>{
     book:<><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></>,
     tag:<><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></>,
     x:<><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></>,
+    trash:<><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">{p[name]}</svg>;
 };
@@ -519,9 +520,10 @@ const NavBar=({screen,onNav})=>{
 };
 
 // ── VenueScreen ────────────────────────────────────────────
-const VenueScreen=({venue,reviews,onBack,onWriteReview})=>{
+const VenueScreen=({venue,reviews,onBack,onWriteReview,onDeleteVenue,onDeleteReview})=>{
   const [tab,setTab]=React.useState('reviews');
   const [saved,setSaved]=React.useState(false);
+  const [confirmDelete,setConfirmDelete]=React.useState(false);
   const isMobile=useWindowSize()<768;
   const myReviews=reviews.filter(r=>r.venueId===venue.id);
   const photoGrads=[venue.imgGrad,'linear-gradient(135deg,#D7EBE0,#2E5E3B)','linear-gradient(135deg,#F2E0D5,#C4622D)','linear-gradient(135deg,#EDE8E4,#9C9390)','linear-gradient(135deg,#FAF2EE,#E0967A)','linear-gradient(135deg,#D7EBE0,#4A8B5E)'];
@@ -543,8 +545,21 @@ const VenueScreen=({venue,reviews,onBack,onWriteReview})=>{
         </div>
         <div style={{position:'absolute',top:12,right:12,display:'flex',gap:6}}>
           <button onClick={()=>setSaved(!saved)} style={{background:'rgba(255,255,255,0.9)',border:'none',borderRadius:'50%',width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:saved?C.primary:C.n700}}><Icon name={saved?'heart-f':'heart'} size={15}/></button>
+          <button onClick={()=>setConfirmDelete(true)} style={{background:'rgba(255,255,255,0.9)',border:'none',borderRadius:'50%',width:34,height:34,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#B91C1C'}}><Icon name="trash" size={14} color="#B91C1C"/></button>
         </div>
       </div>
+      {confirmDelete&&(
+        <div style={{position:'fixed',inset:0,background:'rgba(26,23,20,0.55)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:16}} onClick={()=>setConfirmDelete(false)}>
+          <div style={{background:'white',borderRadius:16,padding:28,maxWidth:360,width:'100%',boxShadow:'0 16px 48px rgba(26,23,20,0.2)'}} onClick={e=>e.stopPropagation()}>
+            <div style={{fontFamily:"'Playfair Display',serif",fontWeight:700,fontSize:20,color:C.n900,marginBottom:8}}>Delete this venue?</div>
+            <p style={{fontSize:14,color:C.n700,lineHeight:1.6,marginBottom:24}}>This will remove <strong>{venue.name}</strong> and all your journal entries for it. This cannot be undone.</p>
+            <div style={{display:'flex',gap:10}}>
+              <button onClick={()=>setConfirmDelete(false)} style={{flex:1,padding:'10px',background:C.n100,border:'none',borderRadius:8,fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,color:C.n700,cursor:'pointer'}}>Cancel</button>
+              <button onClick={()=>{setConfirmDelete(false);onDeleteVenue(venue.id);}} style={{flex:1,padding:'10px',background:'#B91C1C',border:'none',borderRadius:8,fontFamily:"'DM Sans',sans-serif",fontWeight:600,fontSize:14,color:'white',cursor:'pointer'}}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
         {venue.open?<Badge variant="green">●Open now</Badge>:<Badge>●Closed</Badge>}
@@ -591,7 +606,10 @@ const VenueScreen=({venue,reviews,onBack,onWriteReview})=>{
             <div key={r.id} style={{background:'white',borderRadius:12,padding:16,marginBottom:10,boxShadow:'0 1px 3px rgba(26,23,20,0.08)'}}>
               <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:8}}>
                 <div style={{fontSize:12,color:C.n400}}>{r.date}</div>
-                <Stars rating={r.rating} size={13}/>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <Stars rating={r.rating} size={13}/>
+                  <button onClick={()=>onDeleteReview(r.id)} title="Delete entry" style={{background:'none',border:'none',cursor:'pointer',color:C.n400,display:'flex',alignItems:'center',padding:2}} onMouseEnter={e=>e.currentTarget.style.color='#B91C1C'} onMouseLeave={e=>e.currentTarget.style.color=C.n400}><Icon name="trash" size={14}/></button>
+                </div>
               </div>
               <p style={{fontSize:14,lineHeight:1.65,color:C.n700}}>{r.text}</p>
             </div>
@@ -728,7 +746,7 @@ const GenresScreen=({venues,onVenueSelect})=>{
 };
 
 // ── JournalScreen ──────────────────────────────────────────
-const JournalScreen=({venues,reviews,onVenueSelect})=>{
+const JournalScreen=({venues,reviews,onVenueSelect,onDeleteReview})=>{
   const isMobile=useWindowSize()<768;
   const all=[...reviews].sort((a,b)=>b.id-a.id);
   return(
@@ -740,13 +758,12 @@ const JournalScreen=({venues,reviews,onVenueSelect})=>{
         const g=v?GENRES.find(x=>x.id===v.genre):null;
         if(!v)return null;
         return(
-          <div key={r.id} style={{background:'white',borderRadius:14,padding:18,marginBottom:9,boxShadow:'0 1px 3px rgba(26,23,20,0.08),0 4px 16px rgba(26,23,20,0.06)',cursor:'pointer',transition:'box-shadow 150ms'}}
-            onClick={()=>onVenueSelect(v)}
+          <div key={r.id} style={{background:'white',borderRadius:14,padding:18,marginBottom:9,boxShadow:'0 1px 3px rgba(26,23,20,0.08),0 4px 16px rgba(26,23,20,0.06)',transition:'box-shadow 150ms'}}
             onMouseEnter={e=>e.currentTarget.style.boxShadow='0 4px 12px rgba(26,23,20,0.14)'}
             onMouseLeave={e=>e.currentTarget.style.boxShadow='0 1px 3px rgba(26,23,20,0.08),0 4px 16px rgba(26,23,20,0.06)'}>
             <div style={{display:'flex',alignItems:'flex-start',gap:11}}>
-              <div style={{width:42,height:42,borderRadius:10,background:v.imgGrad,flexShrink:0}}/>
-              <div style={{flex:1,minWidth:0}}>
+              <div onClick={()=>onVenueSelect(v)} style={{width:42,height:42,borderRadius:10,background:v.imgGrad,flexShrink:0,cursor:'pointer'}}/>
+              <div style={{flex:1,minWidth:0,cursor:'pointer'}} onClick={()=>onVenueSelect(v)}>
                 <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:2,flexWrap:'wrap'}}>
                   <div style={{fontFamily:"'Playfair Display',serif",fontWeight:600,fontSize:14,color:C.n900}}>{v.name}</div>
                   {g&&<span style={{fontSize:10,fontWeight:500,padding:'1px 6px',borderRadius:9999,background:g.bg,color:g.color}}>{g.label}</span>}
@@ -755,6 +772,7 @@ const JournalScreen=({venues,reviews,onVenueSelect})=>{
                 <div style={{marginBottom:4}}><Stars rating={r.rating} size={11}/></div>
                 <p style={{fontSize:13,lineHeight:1.6,color:C.n600,overflow:'hidden',display:'-webkit-box',WebkitLineClamp:2,WebkitBoxOrient:'vertical'}}>{r.text}</p>
               </div>
+              <button onClick={()=>onDeleteReview(r.id)} title="Delete entry" style={{background:'none',border:'none',cursor:'pointer',color:C.n400,flexShrink:0,padding:4,marginLeft:4}} onMouseEnter={e=>e.currentTarget.style.color='#B91C1C'} onMouseLeave={e=>e.currentTarget.style.color=C.n400}><Icon name="trash" size={15}/></button>
             </div>
           </div>
         );
@@ -780,19 +798,33 @@ const App=()=>{
   const addVenue=v=>{const next=[...venues,v];setVenues(next);saveVenues(next);};
   const addReview=r=>{
     const next=[...reviews,r];setReviews(next);saveReviews(next);
-    // Mark venue as visited
     const vNext=venues.map(v=>v.id===r.venueId?{...v,visited:true,count:v.count+1,myRating:r.rating,rating:r.rating}:v);
     setVenues(vNext);saveVenues(vNext);
+  };
+  const deleteVenue=id=>{
+    const vNext=venues.filter(v=>v.id!==id);setVenues(vNext);saveVenues(vNext);
+    const rNext=reviews.filter(r=>r.venueId!==id);setReviews(rNext);saveReviews(rNext);
+    go('map');
+  };
+  const deleteReview=id=>{
+    const rNext=reviews.filter(r=>r.id!==id);setReviews(rNext);saveReviews(rNext);
+    // Recalculate visited/count/rating for affected venue
+    const r=reviews.find(r=>r.id===id);
+    if(r){
+      const remaining=rNext.filter(x=>x.venueId===r.venueId);
+      const vNext=venues.map(v=>v.id===r.venueId?{...v,visited:remaining.length>0,count:remaining.length,rating:remaining.length?remaining.reduce((a,x)=>a+x.rating,0)/remaining.length:0}:v);
+      setVenues(vNext);saveVenues(vNext);
+    }
   };
 
   return(
     <div style={{minHeight:'100vh',background:C.n100,paddingBottom:isMobile?56:0}}>
       {!isMobile&&<NavBar screen={screen} onNav={s=>go(s)}/>}
       {screen==='map'    &&<MapScreen venues={venues} onVenueSelect={v=>go('venue',v)} onAddVenue={addVenue}/>}
-      {screen==='venue'  &&venue&&<VenueScreen venue={venue} reviews={reviews} onBack={()=>go('map')} onWriteReview={()=>go('review',venue)}/>}
+      {screen==='venue'  &&venue&&<VenueScreen venue={venue} reviews={reviews} onBack={()=>go('map')} onWriteReview={()=>go('review',venue)} onDeleteVenue={deleteVenue} onDeleteReview={deleteReview}/>}
       {screen==='review' &&venue&&<WriteReviewScreen venue={venue} onBack={()=>go('venue',venue)} onSave={r=>{addReview(r);}}/>}
       {screen==='genres' &&<GenresScreen venues={venues} onVenueSelect={v=>go('venue',v)}/>}
-      {screen==='journal'&&<JournalScreen venues={venues} reviews={reviews} onVenueSelect={v=>go('venue',v)}/>}
+      {screen==='journal'&&<JournalScreen venues={venues} reviews={reviews} onVenueSelect={v=>go('venue',v)} onDeleteReview={deleteReview}/>}
       {isMobile&&<NavBar screen={screen} onNav={s=>go(s)}/>}
     </div>
   );

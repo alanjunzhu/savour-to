@@ -278,12 +278,13 @@ const AddVenueModal=({onClose,onAdd})=>{
     if(!name.trim()||!address.trim()||!genre){setError('Please fill in name, address and genre.');return;}
     setLoading(true);setError('');
     try{
-      const query=encodeURIComponent(address+', Toronto, Ontario, Canada');
+      const query=encodeURIComponent(address);
       const res=await fetch(`https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,{headers:{'Accept-Language':'en'}});
       const data=await res.json();
       if(!data.length){setError('Address not found. Try a more specific address.');setLoading(false);return;}
       const {lat,lon,display_name}=data[0];
-      const hood=display_name.split(',')[2]?.trim()||'Toronto';
+      const parts=display_name.split(',');
+      const hood=parts[1]?.trim()||parts[0]?.trim()||'Unknown';
       const g=GENRES.find(x=>x.id===genre);
       const newVenue={
         id:Date.now(),name:name.trim(),genre,
@@ -309,7 +310,7 @@ const AddVenueModal=({onClose,onAdd})=>{
           <button onClick={onClose} style={{background:C.n100,border:'none',borderRadius:'50%',width:32,height:32,display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:C.n600}}><Icon name="x" size={16}/></button>
         </div>
 
-        {[['Venue name','text',name,setName,'e.g. Kōst Restaurant'],['Address in Toronto','text',address,setAddress,'e.g. 181 Wellington St W']].map(([label,type,val,set,ph])=>(
+        {[['Venue name','text',name,setName,'e.g. Kōst Restaurant'],['Address','text',address,setAddress,'e.g. 181 Wellington St W or Shibuya, Tokyo']].map(([label,type,val,set,ph])=>(
           <div key={label} style={{marginBottom:14}}>
             <div style={{fontSize:13,fontWeight:600,color:C.n900,marginBottom:5}}>{label}</div>
             <input type={type} value={val} onChange={e=>set(e.target.value)} placeholder={ph}
